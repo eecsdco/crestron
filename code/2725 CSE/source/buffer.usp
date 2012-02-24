@@ -1,0 +1,216 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #DEFAULT_VOLATILE
+#DEFAULT_NONVOLATILE
+#ENABLE_STACK_CHECKING
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional librarys as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT enable, iboot_connected, in[2];
+// ANALOG_INPUT 
+// STRING_INPUT 
+// BUFFER_INPUT 
+
+DIGITAL_OUTPUT setup_mode, iboot_connect, play[4];
+// ANALOG_OUTPUT                                
+STRING_OUTPUT iboot_tx$;
+
+/*******************************************************************************************
+  Structure Definitions
+  (Uncomment and define structure definitions as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: struct.myString = "";
+*******************************************************************************************/
+// STRUCTURE MyStruct1
+// {
+// };
+
+// MyStruct1 struct;
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+INTEGER active, timeout;
+STRING buffer$[8];
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+/*
+Function MyFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+}
+*/
+
+/*
+Integer_Function MyIntFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+
+    Return (0);
+}
+*/
+
+/*
+String_Function MyStrFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+
+    Return ("");
+}
+*/
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+
+PUSH in
+{   
+	if(enable) {
+		if(Len(buffer$)=9) buffer$ = Right(buffer$,8);
+			
+		if(in[2]) buffer$ = buffer$ + "1";
+		else buffer$ = buffer$ + "0";
+	
+		if(buffer$ = "00110101" && !active) //activate sound mode
+		{
+			active = 1;
+			buffer$ = "";
+		} else if(buffer$ = "00000000" && !active) { // activate setup mode
+			active = 2;
+			setup_mode = 1;
+			buffer$ = "";
+		} else if(buffer$ = "11111111" && !active) { // cycle power with iboot
+		    iboot_connect = 1;   
+		    timeout = 0;
+		    Wait(500, WaitTimeout) timeout = 1; // connection attempt timeout
+		    while(!timeout)
+		    {              
+		    	  if(iboot_connected)
+		    	  { 
+		    	  	   Pulse(1,play[1]);
+		    	       iboot_tx$ = Chr(27)+"coec"+Chr(27)+"c"+Chr(13);
+		    	       CancelWait(WaitTimeout);
+		    	       break;
+		    	  }
+		    }
+		    iboot_connect = 0;
+		}
+		
+		if(active = 1)
+		{
+			if(Right(buffer$,2) = "00")
+			{
+				Pulse(1,play[1]);
+				buffer$ = "";
+			}
+			if(Right(buffer$,2) = "01")
+			{
+				Pulse(1,play[2]);
+				buffer$ = "";
+			}
+            if(Right(buffer$,2) = "10")
+			{
+				Pulse(1,play[3]);
+				buffer$ = "";
+			}
+            if(Right(buffer$,2) = "11")
+			{
+				Pulse(1,play[4]);
+				buffer$ = "";
+			}
+		}		
+
+	}
+}
+
+
+
+RELEASE enable
+{
+    active = 0;
+	buffer$ = "";
+}
+
+PUSH enable  // wait for next press of off button to disable setup mode
+{
+	setup_mode = 0;
+	buffer$ = "";
+}
+
+
+/*
+CHANGE input
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+EVENT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+
+Function Main()
+{
+    active = 0;
+	setup_mode = 0;          
+	timeout = 0;
+	iboot_connect = 0;
+}
+
+
